@@ -1,0 +1,10 @@
+data/
+extracted_html/
+example_html/
+.env
+*.csv
+*.json
+.venv
+__pycache__/
+*.log
+visited_urls.txt
