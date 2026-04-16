@@ -5,6 +5,7 @@ example_html/
 *.csv
 *.json
 *.jsonl
+extracted_tweets.jsonl
 .venv
 __pycache__/
 *.log
