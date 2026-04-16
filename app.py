@@ -4,6 +4,8 @@ import time
 import logging
 import asyncio
 import shutil
+import zipfile
+import io
 from datetime import datetime, timedelta
 from main_scrape import run_parallel_scrape
 from parse_html_data import parse_twitter_html
@@ -50,6 +52,7 @@ FILTER_OPTIONS = [
 def create_default_task(task_id, keyword=""):
     task = {
         "id": task_id,
+        "job_type": "Search",
         "keyword": keyword,
         "since": datetime.now() - timedelta(days=7),
         "until": datetime.now(),
@@ -84,13 +87,15 @@ with st.sidebar:
     st.title("⚙️ Global Controls")
     st.info("Manage your scraping data and pipeline execution.")
     
-    if st.button("🗑️ Clear Raw Data (data/)", help="Deletes all folders in the data directory"):
+    if st.button("🗑️ Manually Clear Raw Data", help="Deletes all folders in the data directory"):
         if os.path.exists("data"):
             shutil.rmtree("data")
             os.makedirs("data")
             st.success("Data directory cleared.")
         else:
             st.warning("Data directory does not exist.")
+
+    auto_clear = st.checkbox("Auto-clear data before run", value=True, help="Automatically wipe previous scrape data when starting a new run to ensure fresh results.")
 
     st.divider()
     st.header("1. Define Tasks")
@@ -116,19 +121,29 @@ for i, task in enumerate(st.session_state.tasks):
         col_main, col_del = st.columns([9, 1])
         
         with col_main:
+            # Job Type Selector
+            task['job_type'] = st.radio("Job Type", ["Search", "Profile"], index=0 if task.get('job_type') == "Search" else 1, key=f"type_{task['id']}", horizontal=True)
+
             # Core Config
             c1, c2, c3, c4 = st.columns([3, 2, 2, 1])
-            task['keyword'] = c1.text_input("Human Keyword", value=task['keyword'], key=f"kw_{task['id']}")
-            task['since'] = c2.date_input("Since", value=task['since'], key=f"since_{task['id']}")
-            task['until'] = c3.date_input("Until", value=task['until'], key=f"until_{task['id']}")
-            task['max_pages'] = c4.number_input("Pages", min_value=1, value=task['max_pages'], key=f"pages_{task['id']}")
+            label = "Search Keyword" if task['job_type'] == "Search" else "User Handle (e.g. @elonmusk)"
+            task['keyword'] = c1.text_input(label, value=task['keyword'], key=f"kw_{task['id']}")
+            
+            if task['job_type'] == "Search":
+                task['since'] = c2.date_input("Since", value=task['since'], key=f"since_{task['id']}")
+                task['until'] = c3.date_input("Until", value=task['until'], key=f"until_{task['id']}")
+                task['max_pages'] = c4.number_input("Pages", min_value=1, value=task['max_pages'], key=f"pages_{task['id']}")
 
-            # Thresholds
-            st.markdown("<div class='filter-header'>Thresholds</div>", unsafe_allow_html=True)
-            f1, f2, f3 = st.columns(3)
-            task['min_faves'] = f1.number_input("Minimum Likes", min_value=0, value=task['min_faves'], key=f"faves_{task['id']}")
-            task['min_retweets'] = f2.number_input("Minimum Retweets", min_value=0, value=task['min_retweets'], key=f"rt_{task['id']}")
-            task['min_replies'] = f3.number_input("Minimum Replies", min_value=0, value=task['min_replies'], key=f"rep_{task['id']}")
+                # Thresholds
+                st.markdown("<div class='filter-header'>Thresholds</div>", unsafe_allow_html=True)
+                f1, f2, f3 = st.columns(3)
+                task['min_faves'] = f1.number_input("Minimum Likes", min_value=0, value=task['min_faves'], key=f"faves_{task['id']}")
+                task['min_retweets'] = f2.number_input("Minimum Retweets", min_value=0, value=task['min_retweets'], key=f"rt_{task['id']}")
+                task['min_replies'] = f3.number_input("Minimum Replies", min_value=0, value=task['min_replies'], key=f"rep_{task['id']}")
+            else:
+                # Profile Mode Simple Config
+                task['max_pages'] = c2.number_input("Pages to Scrape", min_value=1, value=task['max_pages'], key=f"pages_{task['id']}")
+                st.info("Profile scraping fetches the latest posts from the user's timeline. Threshold filters are not applicable.")
 
             # Toggles - Dual Layer
             # Filter (Include) Section
@@ -184,6 +199,11 @@ if execute:
         logger.addHandler(streamlit_handler)
 
         with st.status("Executing Parallel Scrape...", expanded=True) as status:
+            if auto_clear and os.path.exists("data"):
+                st.write("🧹 Clearing stale raw data...")
+                shutil.rmtree("data")
+                os.makedirs("data")
+
             st.write("Initializing Async Client...")
             try:
                 asyncio.run(run_parallel_scrape(search_jobs))
@@ -210,13 +230,32 @@ if execute:
         st.balloons()
 
         # Download Section
-        d1, d2 = st.columns(2)
+        st.divider()
+        st.subheader("📦 Download Results")
+        d1, d2, d3 = st.columns(3)
+        
         if "JSON" in output_formats and os.path.exists(jsonl_file):
             with open(jsonl_file, "rb") as f:
-                d1.download_button("Download Unified JSONL", f, file_name="tweets.jsonl", mime="application/json")
+                d1.download_button("📄 JSONL Result", f, file_name="tweets.jsonl", mime="application/json", use_container_width=True)
+        
         if "CSV" in output_formats and os.path.exists(csv_file):
             with open(csv_file, "rb") as f:
-                d2.download_button("Download Unified CSV", f, file_name="tweets.csv", mime="text/csv")
+                d2.download_button("📊 CSV Result", f, file_name="tweets.csv", mime="text/csv", use_container_width=True)
+
+        # ZIP Download Logic
+        if os.path.exists(jsonl_file) and os.path.exists(csv_file):
+            zip_buffer = io.BytesIO()
+            with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+                zf.write(jsonl_file, arcname="tweets.jsonl")
+                zf.write(csv_file, arcname="tweets.csv")
+            
+            d3.download_button(
+                "🎁 Download All (ZIP)",
+                zip_buffer.getvalue(),
+                file_name="twitter_scrape_results.zip",
+                mime="application/zip",
+                use_container_width=True
+            )
 
 # Footer
 st.divider()
