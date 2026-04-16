@@ -9,6 +9,22 @@ from main_scrape import run_parallel_scrape
 from parse_html_data import parse_twitter_html
 from tweets_json_to_csv import run_twitter_conversion_pipeline
 
+# --- Custom Logging Handler ---
+class StreamlitLogHandler(logging.Handler):
+    def __init__(self, log_placeholder):
+        super().__init__()
+        self.log_placeholder = log_placeholder
+        self.log_buffer = []
+
+    def emit(self, record):
+        log_entry = self.format(record)
+        self.log_buffer.append(log_entry)
+        # Keep only the last 50 lines for UI performance
+        if len(self.log_buffer) > 50:
+            self.log_buffer.pop(0)
+        # Update the placeholder in Streamlit
+        self.log_placeholder.code("\n".join(self.log_buffer))
+
 # --- Page Config ---
 st.set_page_config(
     page_title="Twitter Scraper v2",
@@ -156,24 +172,39 @@ if execute:
         # 1. Start Scraping
         st.subheader("📋 Pipeline Progress")
         
+        # Log Box for Live Output
+        st.markdown("<div class='filter-header'>Live Execution Logs</div>", unsafe_allow_html=True)
+        log_placeholder = st.empty()
+        log_placeholder.code("Waiting for logs...")
+
+        # Setup Logging Handler
+        logger = logging.getLogger()
+        streamlit_handler = StreamlitLogHandler(log_placeholder)
+        streamlit_handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+        logger.addHandler(streamlit_handler)
+
         with st.status("Executing Parallel Scrape...", expanded=True) as status:
             st.write("Initializing Async Client...")
-            asyncio.run(run_parallel_scrape(search_jobs))
-            
-            st.write("Extraction complete. Starting Parser...")
-            # 2. Run Recursive Parser
-            jsonl_file = "extracted_tweets.jsonl"
-            csv_file = "extracted_tweets.csv"
-            
-            tweet_count = parse_twitter_html("data", jsonl_file)
-            st.write(f"Parsed {tweet_count} unique tweets.")
+            try:
+                asyncio.run(run_parallel_scrape(search_jobs))
+                
+                st.write("Extraction complete. Starting Parser...")
+                # 2. Run Recursive Parser
+                jsonl_file = "extracted_tweets.jsonl"
+                csv_file = "extracted_tweets.csv"
+                
+                tweet_count = parse_twitter_html("data", jsonl_file)
+                st.write(f"Parsed {tweet_count} unique tweets.")
 
-            # 3. Convert to CSV
-            if "CSV" in output_formats and os.path.exists(jsonl_file):
-                st.write("Converting to CSV...")
-                run_twitter_conversion_pipeline(jsonl_file, csv_file)
+                # 3. Convert to CSV
+                if "CSV" in output_formats and os.path.exists(jsonl_file):
+                    st.write("Converting to CSV...")
+                    run_twitter_conversion_pipeline(jsonl_file, csv_file)
 
-            status.update(label="✅ Pipeline Completed!", state="complete", expanded=False)
+                status.update(label="✅ Pipeline Completed!", state="complete", expanded=False)
+            finally:
+                # Always remove handler to avoid memory leaks and duplicate logs in future runs
+                logger.removeHandler(streamlit_handler)
 
         st.success(f"Successfully processed {len(valid_tasks)} search jobs.")
         st.balloons()
@@ -187,9 +218,6 @@ if execute:
             with open(csv_file, "rb") as f:
                 d2.download_button("Download Unified CSV", f, file_name="tweets.csv", mime="text/csv")
 
-# URL Live Monitoring (Optional)
-if os.path.exists("visited_urls.txt"):
-    with st.expander("🌐 Activity Log (Recently Visited URLs)", expanded=False):
-        with open("visited_urls.txt", "r") as f:
-            lines = f.readlines()
-            st.text("".join(lines[-10:]))
+# Footer
+st.divider()
+st.caption("Powered by Async HTTPX & Streamlit")
