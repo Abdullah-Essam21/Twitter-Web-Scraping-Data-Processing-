@@ -162,16 +162,16 @@ if execute:
             
             st.write("Extraction complete. Starting Parser...")
             # 2. Run Recursive Parser
-            json_file = "extracted_tweets.json"
+            jsonl_file = "extracted_tweets.jsonl"
             csv_file = "extracted_tweets.csv"
             
-            tweet_count = parse_twitter_html("data", json_file)
+            tweet_count = parse_twitter_html("data", jsonl_file)
             st.write(f"Parsed {tweet_count} unique tweets.")
 
             # 3. Convert to CSV
-            if "CSV" in output_formats and os.path.exists(json_file):
+            if "CSV" in output_formats and os.path.exists(jsonl_file):
                 st.write("Converting to CSV...")
-                run_twitter_conversion_pipeline(json_file, csv_file)
+                run_twitter_conversion_pipeline(jsonl_file, csv_file)
 
             status.update(label="✅ Pipeline Completed!", state="complete", expanded=False)
 
@@ -180,9 +180,9 @@ if execute:
 
         # Download Section
         d1, d2 = st.columns(2)
-        if "JSON" in output_formats and os.path.exists(json_file):
-            with open(json_file, "rb") as f:
-                d1.download_button("Download Unified JSON", f, file_name="tweets.json", mime="application/json")
+        if "JSON" in output_formats and os.path.exists(jsonl_file):
+            with open(jsonl_file, "rb") as f:
+                d1.download_button("Download Unified JSONL", f, file_name="tweets.jsonl", mime="application/json")
         if "CSV" in output_formats and os.path.exists(csv_file):
             with open(csv_file, "rb") as f:
                 d2.download_button("Download Unified CSV", f, file_name="tweets.csv", mime="text/csv")

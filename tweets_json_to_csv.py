@@ -13,13 +13,16 @@ def run_twitter_conversion_pipeline(input_file, output_file):
     """
     try:
         # 1. Load Data
-        logging.info(f"Reading data from {input_file}...")
+        logging.info(f"Reading data from {input_file} (JSONL format)...")
+        data = []
         with open(input_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            for line in f:
+                if line.strip():
+                    data.append(json.loads(line))
         
         # 2. Flatten JSON
         # Normalizes nested dicts/lists into a flat table
-        logging.info("Flattening JSON data...")
+        logging.info("Flattening JSONL data...")
         df = pd.json_normalize(data)
         
         # 3. Data Profiling (Replacing .describe())
