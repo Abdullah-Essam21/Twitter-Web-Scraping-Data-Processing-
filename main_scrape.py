@@ -165,13 +165,23 @@ class NitterScraper:
                     
         return f"Completed [{keyword}]: {page_count} pages saved to {output_dir}"
 
+from profile_scrape import NitterProfileScraper
+
 async def run_parallel_scrape(scrape_configs):
     """
-    Orchestrates multiple scraping jobs.
+    Orchestrates multiple scraping jobs (Search or Profile).
     """
-    scraper = NitterScraper()
-    # Create tasks
-    tasks = [scraper.scrape_keyword(cfg) for cfg in scrape_configs]
+    search_scraper = NitterScraper()
+    profile_scraper = NitterProfileScraper()
+    
+    tasks = []
+    for cfg in scrape_configs:
+        job_type = cfg.get("job_type", "Search")
+        if job_type == "Profile":
+            tasks.append(profile_scraper.scrape_profile(cfg))
+        else:
+            tasks.append(search_scraper.scrape_keyword(cfg))
+            
     # Run concurrently
     results = await asyncio.gather(*tasks)
     for res in results:
