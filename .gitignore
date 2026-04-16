@@ -4,6 +4,7 @@ example_html/
 .env
 *.csv
 *.json
+*.jsonl
 .venv
 __pycache__/
 *.log
