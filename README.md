@@ -19,7 +19,7 @@ A high-performance, asynchronous Twitter scraping solution built with Python. Th
 ![Execution Logs](screenshots/pipline%20execution%20logs.png)
 
 ### Result Export Demo
-![Downloading CSV Results](screenshots/downloading%20csv.mp4)
+![Downloading CSV Results](https://github.com/Abdullah-Essam21/Twitter-Web-Scraping-Data-Processing-/blob/main/sample%20data/results.xlsx)
 
 ## Project Structure
 
