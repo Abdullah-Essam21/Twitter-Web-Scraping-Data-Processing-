@@ -1,0 +1,36 @@
+{
+  "tweets": [
+    {
+      "id": "1900000000000000001",
+      "text": "Launch thread: new export workflow is live.",
+      "createdAt": "2026-05-06T18:30:00Z",
+      "author": {
+        "username": "xquik",
+        "name": "Xquik"
+      },
+      "metrics": {
+        "replies": 4,
+        "retweets": 12,
+        "likes": 91,
+        "views": 2400
+      },
+      "query": "launch thread"
+    },
+    {
+      "id": "1900000000000000002",
+      "text": "Follower questions are grouped for review.",
+      "createdAt": "2026-05-06T18:45:00Z",
+      "author": {
+        "username": "@xquik",
+        "name": "Xquik"
+      },
+      "metrics": {
+        "replies": 2,
+        "retweets": 5,
+        "likes": 38,
+        "views": 980
+      },
+      "query": "launch thread"
+    }
+  ]
+}
