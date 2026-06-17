@@ -49,3 +49,13 @@ Full Stack Twitter Scraper/
 1. Install dependencies: `pip install -r requirements.txt`
 2. Run the dashboard: `streamlit run src/ui/app.py`
 3. Define your tasks and start scraping!
+
+## Import TweetClaw Exports
+
+If you already collected reviewed X/Twitter data with [TweetClaw](https://github.com/Xquik-dev/tweetclaw), convert a saved JSON, JSONL, or CSV export into this project's processed tweet CSV schema without running a live scrape:
+
+```bash
+python legacy/tweetclaw_export_to_pipeline.py "sample data/tweetclaw-export.json" data/processed/tweetclaw.csv --json-output data/processed/tweetclaw.json
+```
+
+The converter maps TweetClaw tweet text, IDs, authors, timestamps, URLs, metrics, and query metadata into columns such as `text_content`, `tweet_id`, `user_handle`, `timestamp_full`, `engagement_stats.likes`, and `source_job`. Rows without tweet text are skipped, and duplicates keep the first matching `tweet_id` or text.
